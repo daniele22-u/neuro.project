@@ -1,0 +1,26 @@
+# Foundation Models Segmentation Pipeline Requirements
+
+# Core dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+numpy<2.0.0
+matplotlib>=3.5.0
+pillow>=9.0.0
+tqdm>=4.65.0
+
+# Transformers and foundation models
+transformers>=4.30.0
+accelerate>=0.20.0
+sentencepiece>=0.1.99
+
+# Medical imaging
+SimpleITK>=2.2.0
+scikit-image>=0.20.0
+
+# Additional utilities
+scipy>=1.10.0
+plotly>=5.14.0
+
+# Optional: for better performance
+# timm>=0.9.0
+# segmentation-models-pytorch>=0.3.0
