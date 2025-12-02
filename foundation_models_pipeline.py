@@ -90,14 +90,19 @@ class SAMModel(BaseSegmentationModel):
             raise
             
     def predict(self, image: torch.Tensor, boxes: Optional[list] = None, 
-                points: Optional[list] = None) -> torch.Tensor:
+                points: Optional[list] = None, use_automatic_prompts: bool = True) -> torch.Tensor:
         """
         Predict segmentation mask for image.
         
         Args:
             image: [1, H, W] or [3, H, W] tensor
             boxes: Optional list of bounding boxes [[x0, y0, x1, y1], ...]
+                   Should ONLY be provided during training/validation.
+                   For test mode, set to None to avoid data leakage.
             points: Optional list of point prompts
+            use_automatic_prompts: If True and no boxes/points provided,
+                   will use entire image as prompt. If False, will try
+                   to generate prompts automatically from the image.
             
         Returns:
             Binary mask tensor [1, H, W]
@@ -119,6 +124,8 @@ class SAMModel(BaseSegmentationModel):
         
         # Prepare inputs
         if boxes is not None:
+            # WARNING: boxes should only be used during training/validation
+            # For test mode, boxes should be None to avoid data leakage
             inputs = self.processor(
                 images=pil_image,
                 input_boxes=[boxes],
@@ -131,14 +138,26 @@ class SAMModel(BaseSegmentationModel):
                 return_tensors="pt"
             ).to(self.device)
         else:
-            # Default: segment entire image
-            H, W = image.shape[-2:]
-            boxes = [[[0, 0, W-1, H-1]]]
-            inputs = self.processor(
-                images=pil_image,
-                input_boxes=boxes,
-                return_tensors="pt"
-            ).to(self.device)
+            # Test mode: no ground truth information available
+            if use_automatic_prompts:
+                # Default: segment entire image (no data leakage)
+                H, W = image.shape[-2:]
+                boxes = [[[0, 0, W-1, H-1]]]
+                inputs = self.processor(
+                    images=pil_image,
+                    input_boxes=boxes,
+                    return_tensors="pt"
+                ).to(self.device)
+            else:
+                # Could add automatic prompt generation here
+                # (e.g., grid of points, edge detection, etc.)
+                H, W = image.shape[-2:]
+                boxes = [[[0, 0, W-1, H-1]]]
+                inputs = self.processor(
+                    images=pil_image,
+                    input_boxes=boxes,
+                    return_tensors="pt"
+                ).to(self.device)
         
         # Forward pass
         with torch.no_grad():
@@ -189,13 +208,18 @@ class MedSAMModel(BaseSegmentationModel):
             print(f"❌ Error loading MedSAM: {e}")
             raise
             
-    def predict(self, image: torch.Tensor, boxes: Optional[list] = None) -> torch.Tensor:
+    def predict(self, image: torch.Tensor, boxes: Optional[list] = None, 
+                use_automatic_prompts: bool = True) -> torch.Tensor:
         """
         Predict segmentation mask for medical image.
         
         Args:
             image: [1, H, W] or [3, H, W] tensor
             boxes: Optional list of bounding boxes [[x0, y0, x1, y1], ...]
+                   Should ONLY be provided during training/validation.
+                   For test mode, set to None to avoid data leakage.
+            use_automatic_prompts: If True and no boxes provided,
+                   will use entire image as prompt.
             
         Returns:
             Binary mask tensor [1, H, W]
@@ -216,8 +240,14 @@ class MedSAMModel(BaseSegmentationModel):
         
         # Prepare inputs with box prompt
         if boxes is None:
+            # Test mode: no ground truth information
+            # Use entire image as prompt (no data leakage)
             H, W = image.shape[-2:]
             boxes = [[[0, 0, W-1, H-1]]]
+        else:
+            # WARNING: boxes should only be used during training/validation
+            # For test mode, boxes should be None to avoid data leakage
+            pass
             
         inputs = self.processor(
             pil_image,
@@ -535,14 +565,18 @@ class FoundationModelsPipeline:
         return features
     
     def run_all(self, image: torch.Tensor, boxes: Optional[list] = None, 
-                text_prompt: str = "medical image") -> Dict[str, Any]:
+                text_prompt: str = "medical image", mode: str = "test") -> Dict[str, Any]:
         """
         Run all foundation models sequentially.
         
         Args:
             image: Input image tensor [C, H, W]
-            boxes: Optional bounding boxes for SAM models
+            boxes: Optional bounding boxes for SAM models.
+                   Should ONLY be provided when mode="train" or mode="val".
+                   For mode="test", boxes will be ignored to avoid data leakage.
             text_prompt: Text prompt for CLIP
+            mode: Execution mode - "train", "val", or "test" (default: "test")
+                  In "test" mode, boxes are always set to None to prevent data leakage.
             
         Returns:
             Dictionary with all results
@@ -552,6 +586,19 @@ class FoundationModelsPipeline:
         print("🚀"*30)
         print(f"Device: {self.device}")
         print(f"Image shape: {image.shape}")
+        print(f"Mode: {mode.upper()}")
+        
+        # DATA LEAKAGE PREVENTION: In test mode, ignore boxes
+        if mode == "test":
+            if boxes is not None:
+                print("⚠️  WARNING: Boxes provided in test mode. Setting to None to prevent data leakage.")
+            boxes = None
+            print("✓ Test mode: Using no ground truth information (boxes=None)")
+        else:
+            if boxes is not None:
+                print(f"✓ {mode.capitalize()} mode: Using provided bounding boxes")
+            else:
+                print(f"✓ {mode.capitalize()} mode: No boxes provided, using full image")
         
         # Clear previous results
         self.results = {}

@@ -109,10 +109,13 @@ def run_pipeline_on_sample_data():
     print("🚀"*35 + "\n")
     
     try:
+        # Run in TEST mode (default) - no ground truth boxes
+        # This prevents data leakage
         results = pipeline.run_all(
             image=image,
-            boxes=boxes,
-            text_prompt=text_prompt
+            boxes=boxes,  # Will be ignored in test mode
+            text_prompt=text_prompt,
+            mode="test"  # TEST MODE: No data leakage
         )
         
         # Display results summary
@@ -202,9 +205,12 @@ def run_pipeline_with_custom_image(image_path: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     pipeline = FoundationModelsPipeline(device=device)
     
-    # Run all models
+    # Run all models in TEST mode (no ground truth)
     results = pipeline.run_all(
         image=image,
+        boxes=None,  # No boxes in test mode
+        text_prompt="medical image",
+        mode="test"  # TEST MODE: No data leakage
         boxes=boxes,
         text_prompt="medical image"
     )
