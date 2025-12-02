@@ -210,7 +210,7 @@ def run_pipeline_with_custom_image(image_path: str):
         image=image,
         boxes=None,  # No boxes in test mode
         text_prompt="medical image",
-        mode="test"  # TEST MODE: No data leakage
+        mode="test", # TEST MODE: No data leakage
         boxes=boxes,
         text_prompt="medical image"
     )
