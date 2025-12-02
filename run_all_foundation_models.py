@@ -207,13 +207,12 @@ def run_pipeline_with_custom_image(image_path: str):
     
     # Run all models in TEST mode (no ground truth)
     results = pipeline.run_all(
-        image=image,
-        boxes=None,  # No boxes in test mode
-        text_prompt="medical image",
-        mode="test", # TEST MODE: No data leakage
-        boxes=boxes,
-        text_prompt="medical image"
-    )
+    image=image,
+    boxes=boxes,              # Usa le boxes generate sopra
+    text_prompt="medical image",
+    mode="test"               # TEST MODE: no data leakage
+)
+
     
     # Visualize
     output_path = Path("results") / f"results_{Path(image_path).stem}.png"
