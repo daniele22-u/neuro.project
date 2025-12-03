@@ -467,6 +467,8 @@ class DatasetMerged_2d(torch.utils.data.Dataset):
             # Handle case where lab_t_crop might be None
             if lab_t_crop is None:
                 # Create empty label tensor
+                # Note: This should only happen for test data without labels
+                debug(f"Warning: No label available for patient {pid}, creating empty label tensor")
                 lab_t_crop = torch.zeros_like(img_t_crop).long()
             
             lab_np = lab_t_crop[:, 0].cpu().numpy()

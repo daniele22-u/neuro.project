@@ -503,11 +503,13 @@ class FoundationModelTrainer:
                             gt_slice.unsqueeze(0)
                         )
                         all_dice_scores.append(dice_score)
+                    else:
+                        dice_score = None
                     
                     predictions.append({
                         'id': sample_id,
                         'prediction': pred_mask.cpu().numpy(),
-                        'dice': dice_score if label is not None else None
+                        'dice': dice_score
                     })
                     
                 except Exception as e:
