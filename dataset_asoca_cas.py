@@ -464,6 +464,11 @@ class DatasetMerged_2d(torch.utils.data.Dataset):
             bbox = find_heart_bbox_2d(img_t, thresh=0.3, min_area=4000, margin=32)
             img_t_crop, lab_t_crop = crop_and_resize_volume(img_t, lab_t, bbox, out_side=out_side)
 
+            # Handle case where lab_t_crop might be None
+            if lab_t_crop is None:
+                # Create empty label tensor
+                lab_t_crop = torch.zeros_like(img_t_crop).long()
+            
             lab_np = lab_t_crop[:, 0].cpu().numpy()
             slice_sums = lab_np.sum(axis=(1, 2))
             pos_slices = np.where(slice_sums > 0)[0]
@@ -520,11 +525,17 @@ class DatasetMerged_2d(torch.utils.data.Dataset):
         out_id = self.current_patient_id
         if self.split == 'test' and os.path.sep in out_id:
             out_id = os.path.splitext(os.path.basename(out_id))[0]
-        position = self.data_ids_pool.index(self.current_patient_id)
-        if position == -1:
-            debug("In DatasetMerged_2d._get_val_test(), position is -1, something is wrong.")
-        next_position = (position + 1) % len(self)
-        self.current_patient_id = self.data_ids_pool[next_position]
+        
+        # Find position in the pool
+        try:
+            position = self.data_ids_pool.index(self.current_patient_id)
+            next_position = (position + 1) % len(self)
+            self.current_patient_id = self.data_ids_pool[next_position]
+        except ValueError:
+            # If current patient ID not found, reset to first
+            debug("In DatasetMerged_2d._get_val_test(), patient ID not found in pool, resetting to first.")
+            self.current_patient_id = self.data_ids_pool[0]
+        
         return {
             "id": f"{self.split}-MERGED-{out_id}",
             "image": image,
