@@ -113,7 +113,7 @@ def run_pipeline_on_sample_data():
         # This prevents data leakage
         results = pipeline.run_all(
             image=image,
-            boxes=boxes,  # Will be ignored in test mode
+            boxes=None,  # Will be ignored in test mode
             text_prompt=text_prompt,
             mode="test"  # TEST MODE: No data leakage
         )
@@ -207,12 +207,11 @@ def run_pipeline_with_custom_image(image_path: str):
     
     # Run all models in TEST mode (no ground truth)
     results = pipeline.run_all(
-    image=image,
-    boxes=boxes,              # Usa le boxes generate sopra
-    text_prompt="medical image",
-    mode="test"               # TEST MODE: no data leakage
-)
-
+        image=image,
+        boxes=None,  # No boxes in test mode
+        text_prompt="medical image",
+        mode="test", # TEST MODE: No data leakage
+    )
     
     # Visualize
     output_path = Path("results") / f"results_{Path(image_path).stem}.png"
